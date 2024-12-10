@@ -2,51 +2,45 @@
   "name": "chicken-code",
   "displayName": "chicken-code",
   "description": "optimize your code",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "engines": {
-    "vscode": "^1.95.0"
+    "vscode": "^1.93.0"
   },
   "categories": [
     "Other"
   ],
-  "publisher": "Chickencodeoptimizer",
+  "icon": "assets/images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/huynhquocbaoltv/chicken-code"
+  },
+  "license": "MIT",
+  "publisher": "chickencodeoptimizer",
   "activationEvents": [
-    "onLanguage:vue",
-    "onView:optimizationResultsView"
+    "onCommand:chickenCodeOptimizationResultsView"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "chicken-code.helloWorld",
-        "title": "Hello World"
-      }
-    ],
-    "languages": [
-      {
-        "id": "vue",
-        "extensions": [
-          ".vue"
-        ],
-        "aliases": [
-          "Vue"
-        ]
+        "title": "Hello World1255"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "chickenCode",
+          "id": "chickenCodeOptimizer",
           "title": "Chicken Code",
           "icon": "assets/svg/icon.svg"
         }
       ]
     },
     "views": {
-      "chickenCode": [
+      "chickenCodeOptimizer": [
         {
           "type": "webview",
-          "id": "optimizationResultsView",
+          "id": "chickenCodeOptimizationResultsView",
           "name": "Optimization Results"
         }
       ]
@@ -73,13 +67,12 @@
     "@typescript-eslint/parser": "^8.7.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
+    "clean-webpack-plugin": "^4.0.0",
     "eslint": "^9.13.0",
     "ts-loader": "^9.5.1",
     "typescript": "^5.6.3",
     "webpack": "^5.95.0",
-    "webpack-cli": "^5.1.4"
-  },
-  "dependencies": {
-    "node-fetch": "^2.7.0"
+    "webpack-cli": "^5.1.4",
+    "webpack-node-externals": "^3.0.0"
   }
 }

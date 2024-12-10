@@ -3,6 +3,9 @@
 "use strict";
 
 const path = require("path");
+const TerserPlugin = require("terser-webpack-plugin"); // Dùng để giảm kích thước file build
+const { CleanWebpackPlugin } = require("clean-webpack-plugin"); // Dọn sạch thư mục dist trước khi build
+const nodeExternals = require("webpack-node-externals"); // Tự động loại trừ tất cả các mô-đun node_modules
 
 //@ts-check
 /** @typedef {import('webpack').Configuration} WebpackConfig **/
@@ -10,24 +13,19 @@ const path = require("path");
 /** @type WebpackConfig */
 const extensionConfig = {
   target: "node", // VS Code extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
-  mode: "none", // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
-
-  entry: "./src/extension.ts", // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
+  mode: "none", // Tối ưu hóa mã nguồn khi build
+  entry: "./src/extension.ts", // Entry point của extension
   output: {
-    // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
-    path: path.resolve(__dirname, "dist"),
-    filename: "extension.js",
-    libraryTarget: "commonjs2",
+    path: path.resolve(__dirname, "dist"), // Thư mục đầu ra
+    filename: "extension.js", // Tên tệp đã build
+    libraryTarget: "commonjs2", // Sử dụng cho các mô-đun Node.js
   },
-  externals: {
-    vscode: "commonjs vscode",
-    fs: "commonjs fs",
-    path: "commonjs path",
-    os: "commonjs os",
-  },
+  externals: [
+    { vscode: "commonjs vscode" }, // Chỉ định rằng `vscode` là mô-đun external
+    nodeExternals(),
+  ],
   resolve: {
-    // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: [".ts", ".js"],
+    extensions: [".ts", ".js"], // Hỗ trợ các tệp TypeScript và JavaScript
   },
   module: {
     rules: [
@@ -37,14 +35,35 @@ const extensionConfig = {
         use: [
           {
             loader: "ts-loader",
+            options: {
+              transpileOnly: true, // Giảm thời gian build
+            },
           },
         ],
       },
     ],
   },
-  devtool: "nosources-source-map",
-  infrastructureLogging: {
-    level: "log", // enables logging required for problem matchers
+  optimization: {
+    minimize: true, // Thu nhỏ tệp bằng Terser
+    minimizer: [
+      new TerserPlugin({
+        extractComments: false, // Không tạo file .LICENSE.txt
+        terserOptions: {
+          compress: {
+            drop_console: true, // Loại bỏ console.log
+            drop_debugger: true, // Loại bỏ debugger
+          },
+        },
+      }),
+    ],
   },
+  plugins: [
+    new CleanWebpackPlugin(), // Xóa thư mục dist trước khi build
+  ],
+  infrastructureLogging: {
+    level: "warn", // Hiển thị cảnh báo trong console
+  },
+  stats: "errors-only", // Chỉ hiển thị lỗi trong quá trình build
 };
+
 module.exports = [extensionConfig];

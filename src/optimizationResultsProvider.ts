@@ -117,7 +117,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
   setOptimizations(optimizations: any[]): void {
     if (optimizations.length > 0) {
       vscode.commands
-        .executeCommand("workbench.view.extension.chickenCode")
+        .executeCommand("workbench.view.extension.chickenCodeOptimizer")
         .then(() => {
           const skippedOptions =
             this.context.globalState.get<string[]>(this.SKIP_KEY) || [];
@@ -373,7 +373,6 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           const message = event.data;
           
           if (message.command === 'showCache') {
-            console.log('showCache -------> ', message.cache);
             const cacheContent = document.getElementById('cache-content');
             cacheContent.innerHTML = '<h3>Cache Content:</h3>';
             if (message.cache.length === 0) {
