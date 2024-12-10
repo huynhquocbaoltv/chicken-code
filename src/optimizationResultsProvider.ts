@@ -4,6 +4,12 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private optimizations: any[] = [];
   private SKIP_KEY = "chickenCodeSkippedOptions";
+  private highlightDecoration: vscode.TextEditorDecorationType =
+    vscode.window.createTextEditorDecorationType({
+      backgroundColor: "black",
+      borderRadius: "2px",
+      border: "0.5px solid rgba(255, 215, 0, 0.8)",
+    });
 
   constructor(private context: vscode.ExtensionContext) {}
 
@@ -52,7 +58,6 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           });
           console.log("showCache", skippedOptions);
           break;
-
         case "clearCache":
           this.context.globalState.update(this.SKIP_KEY, []);
           vscode.window.showInformationMessage("Cache đã được xóa thành công.");
@@ -60,6 +65,9 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           break;
         case "scrollToCode":
           this.scrollToCode(message.originalCode);
+          break;
+        case "clearHighlight":
+          this.clearHighlight();
           break;
       }
     });
@@ -77,21 +85,74 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
     }
 
     const documentText = editor.document.getText();
-    const startIndex = documentText.indexOf(originalCode);
 
-    if (startIndex === -1) {
+    // Tạo RegEx từ đoạn mã originalCode, cho phép khớp với khoảng trắng tùy ý (\s+)
+    const escapeSpecialChars = (code: string) =>
+      code.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"); // Escape các ký tự đặc biệt
+
+    const normalizedOriginalCode = escapeSpecialChars(originalCode).replace(
+      /\s+/g,
+      "\\s+"
+    );
+    const regex = new RegExp(normalizedOriginalCode, "g"); // Global search
+
+    // Tìm đoạn mã trong tài liệu
+    const match = regex.exec(documentText);
+
+    if (!match) {
       vscode.window.showWarningMessage(
         "Không tìm thấy đoạn mã trong tài liệu."
       );
       return;
     }
 
-    const position = editor.document.positionAt(startIndex);
-    editor.selection = new vscode.Selection(position, position);
-    editor.revealRange(
-      new vscode.Range(position, position),
-      vscode.TextEditorRevealType.InCenter
-    );
+    const startIndex = match.index; // Vị trí bắt đầu của đoạn mã
+    const endIndex = startIndex + match[0].length; // Vị trí kết thúc của đoạn mã
+
+    const startPosition = editor.document.positionAt(startIndex);
+    const endPosition = editor.document.positionAt(endIndex);
+    const range = new vscode.Range(startPosition, endPosition);
+
+    // Highlight đoạn mã
+    editor.setDecorations(this.highlightDecoration, [range]);
+
+    // Cuộn đến đoạn mã
+    editor.selection = new vscode.Selection(startPosition, startPosition);
+    editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+  }
+
+  clearHighlight(originalCode?: string) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) return;
+
+    if (originalCode) {
+      const documentText = editor.document.getText();
+
+      const escapeSpecialChars = (code: string) =>
+        code.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+      const normalizedOriginalCode = escapeSpecialChars(originalCode).replace(
+        /\s+/g,
+        "\\s+"
+      );
+      const regex = new RegExp(normalizedOriginalCode, "g");
+      const match = regex.exec(documentText);
+
+      if (match) {
+        const startIndex = match.index;
+        const endIndex = startIndex + match[0].length;
+
+        const startPosition = editor.document.positionAt(startIndex);
+        const endPosition = editor.document.positionAt(endIndex);
+        const range = new vscode.Range(startPosition, endPosition);
+
+        // Xóa highlight của đoạn mã cụ thể
+        editor.setDecorations(this.highlightDecoration, []);
+      }
+    } else {
+      // Xóa tất cả highlight nếu không có originalCode
+      editor.setDecorations(this.highlightDecoration, []);
+    }
   }
 
   skipOptimization(codeOriginal: string) {
@@ -191,12 +252,10 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         ${this.getStyles()}
       </head>
       <body>
+        <div style="display: flex; flex-direction: column; padding: 16px; height: 100%; justify-content: space-between;">
         ${this.getHtmlBody()}
-        <div> 
-        <button id="view-cache-button">View Cache</button>
         <button id="clear-cache-button">Clear Cache</button>
         </div>
-        <!-- <div id="cache-content"></div> -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
         ${this.getScript()}
       </body>
@@ -210,27 +269,26 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         body {
           font-family: Arial, sans-serif;
         }
-        #view-cache-button, #clear-cache-button {
-          margin: 10px;
-          padding: 10px 20px;
+        #clear-cache-button {
+          margin: 4px;
+          padding: 4px 8px;
           font-size: 14px;
           border: none;
           border-radius: 5px;
           cursor: pointer;
+          background-color: black;
         }
 
         #optimization-list {
-          margin-top: 12px;
-        }
-
-        #view-cache-button {
-          background-color: #007bff;
-          color: white;
+          margin-top: 8px;
         }
 
         #clear-cache-button {
-          background-color: #d9534f;
           color: white;
+        }
+
+        .optimization-container.expanded .arrow-icon {
+          transform: rotate(90deg);
         }
 
         .original-code { 
@@ -247,7 +305,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         .optimization-container {
           border: 1px solid #ccc;
           border-radius: 8px;
-          margin-bottom: 15px;
+          margin-bottom: 8px;
           overflow: hidden;
         }
   
@@ -275,7 +333,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         }
   
         .optimization-content {
-          padding: 15px;
+          padding: 8px;
           display: none;
         }
   
@@ -285,7 +343,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
   
         pre {
           background-color: #1e1e1e;
-          padding: 10px;
+          padding: 4px;
           border-radius: 5px;
           overflow-x: auto;
         }
@@ -323,7 +381,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
   
         .message-container {
           text-align: center;
-          margin-top: 50px;
+          margin-top: 16px;
         }
   
         .message-title {
@@ -360,10 +418,6 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
         }
-        
-        document.getElementById('view-cache-button').addEventListener('click', () => {
-          vscode.postMessage({ command: 'viewCache' });
-        });
 
         document.getElementById('clear-cache-button').addEventListener('click', () => {
           vscode.postMessage({ command: 'clearCache' });
@@ -414,15 +468,17 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
               const titleText = optimization.codeName ? optimization.codeName : \`Optimization \${index + 1}\`;
   
               optimizationContainer.innerHTML = getOptimizationContent(titleText, optimization, index);
-  
+
               const title = optimizationContainer.querySelector('.optimization-title');
               title.addEventListener('click', () => {
-                optimizationContainer.classList.toggle('expanded');
+                const isExpanded = optimizationContainer.classList.toggle('expanded');
+
                 vscode.postMessage({
-                  command: 'scrollToCode',
+                  command: isExpanded ? 'scrollToCode' : 'clearHighlight', // Nếu expanded thì scroll, nếu không thì clear
                   originalCode: optimization.codeOriginal
                 });
               });
+
   
               const applyButton = optimizationContainer.querySelector('.apply-button');
               applyButton.addEventListener('click', () => {

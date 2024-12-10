@@ -44,6 +44,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
          ]
          \`\`\`
+      3. Returns the exact original code content.
 
       ### Here is the code snippet to optimize:
       ${content}
