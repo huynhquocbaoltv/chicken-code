@@ -1,17 +1,26 @@
 import * as vscode from "vscode";
+import { checkAppliedConfigFiles } from "./fileConfig";
 
 export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private optimizations: any[] = [];
-  private SKIP_KEY = "chickenCodeSkippedOptions";
-  private highlightDecoration: vscode.TextEditorDecorationType =
+  private readonly SKIP_KEY = "chickenCodeSkippedOptions";
+  private readonly highlightDecoration: vscode.TextEditorDecorationType =
     vscode.window.createTextEditorDecorationType({
       backgroundColor: "black",
       borderRadius: "2px",
       border: "0.5px solid rgba(255, 215, 0, 0.8)",
     });
+  private additionalContext: string = "";
 
-  constructor(private context: vscode.ExtensionContext) {}
+  constructor(private readonly context: vscode.ExtensionContext) {
+    this.loadAdditionalContext();
+  }
+
+  async loadAdditionalContext() {
+    const context = await checkAppliedConfigFiles();
+    this.additionalContext = context ?? "";
+  }
 
   resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -26,37 +35,48 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.html = this.getWebviewContent();
 
+    webviewView.onDidChangeVisibility(() => {
+      if (!webviewView.visible) {
+        this.clearHighlight();
+      }
+    });
+
     webviewView.webview.onDidReceiveMessage(async (message) => {
       switch (message.command) {
         case "showMessage":
           vscode.window.showInformationMessage(message.text);
           break;
+        case "removeOptimization":
+          this.removeOptimization(message.originalCode);
+          break;
 
         case "applyCode":
-          const { originalCode, optimizedCode, index } = message; // Nhận thêm index từ message
-          await this.applyOptimization(originalCode, optimizedCode);
+          await this.applyOptimization(
+            message.originalCode,
+            message.optimizedCode
+          );
           this._view?.webview.postMessage({
             command: "removeOptimization",
-            index,
+            index: message.index,
           });
           break;
 
         case "skipOption":
-          const { codeOriginal, index: skipIndex } = message;
-          this.skipOptimization(codeOriginal); // Lưu cache các tùy chọn đã bỏ qua
+          this.skipOptimization(message.codeOriginal);
           this._view?.webview.postMessage({
             command: "removeOptimization",
-            index: skipIndex,
+            index: message.index,
           });
           break;
         case "viewCache":
-          const skippedOptions =
-            this.context.globalState.get<string[]>(this.SKIP_KEY) || [];
-          this._view?.webview.postMessage({
-            command: "showCache",
-            cache: skippedOptions,
-          });
-          console.log("showCache", skippedOptions);
+          {
+            const skippedOptions =
+              this.context.globalState.get<string[]>(this.SKIP_KEY) || [];
+            this._view?.webview.postMessage({
+              command: "showCache",
+              cache: skippedOptions,
+            });
+          }
           break;
         case "clearCache":
           this.context.globalState.update(this.SKIP_KEY, []);
@@ -66,13 +86,136 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         case "scrollToCode":
           this.scrollToCode(message.originalCode);
           break;
+        case "optimizeCode":
+          this.startOptimization();
+          break;
         case "clearHighlight":
-          this.clearHighlight();
+          this.clearHighlight(message.originalCode);
           break;
       }
     });
 
     this.updateWebview();
+  }
+
+  async startOptimization() {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage("Không có tệp nào đang mở để tối ưu hóa.");
+      return;
+    }
+
+    const content = editor.document.getText();
+
+    const promptEn = `
+      From now on, you will act as a professional software engineer.
+      Your task is to **support developers in optimizing code** for popular programming languages.
+      You will analyze the code snippet below and look for opportunities to improve it.
+      The main goal is to **optimize the syntax and logic of the code**, but you must **keep the original structure of the code**.
+
+      ${this.additionalContext}
+
+      ### Answer rules:
+      1. If the code does not need optimization or only contains minor issues, skip.
+      2. If there are optimization opportunities, provide the details in the following format:
+         \`\`\`json
+         [
+            {
+                "codeOriginal": "const HelloWorld = 'Hello World';",
+                "codeOptimized": "const helloWorld = 'Hello World';",
+                "codeName": "Variable complies with camelCase",
+                "codeDescription": "Using camelCase for variable names to improve consistency and follow JavaScript naming conventions."
+            },
+            {
+                "codeOriginal": "<div>{{ user.name }}</div>",
+                "codeOptimized": "<div>{{ user?.name }}</div>",
+                "codeName": "Optional property access",
+                "codeDescription": "Added the optional chaining operator '?.' to avoid errors when accessing undefined properties."
+            }
+         ]
+         \`\`\`
+      3. Returns the exact original code content.
+
+      ### Here is the code snippet to optimize:
+      ${content}
+          `;
+
+    const prompt = promptEn;
+
+    try {
+      const result = await this.fetchOptimizationResults(
+        prompt,
+        "AIzaSyCp9s7GBND0rfn4E7L6UAwzi28xzGvB_0E"
+      );
+
+      await this.handleApiResponse(result);
+    } catch (error) {
+      vscode.window.showErrorMessage("Lỗi khi gọi API: " + error);
+    }
+  }
+
+  async fetchOptimizationResults(prompt: string, apiKey: string) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: prompt,
+                  },
+                ],
+              },
+            ],
+          }),
+        }
+      );
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      vscode.window.showErrorMessage("Lỗi khi gọi API: " + error);
+      return null;
+    }
+  }
+
+  async handleApiResponse(apiResponse: any) {
+    try {
+      vscode.window.showInformationMessage(
+        "Kết quả tối ưu hóa đã được nhận.",
+        apiResponse.candidates
+      );
+      const contentText = apiResponse.candidates[0].content.parts[0].text;
+
+      const jsonStart = contentText.indexOf("[");
+      const jsonEnd = contentText.lastIndexOf("]");
+
+      if (jsonStart === -1 || jsonEnd === -1) {
+        throw new Error("Không tìm thấy mảng JSON hợp lệ trong nội dung.");
+      }
+
+      // 2️⃣ Trích xuất chuỗi JSON
+      const jsonString = contentText.substring(jsonStart, jsonEnd + 1);
+      // 3️⃣ Phân tích cú pháp JSON
+      const optimizationResults = JSON.parse(jsonString);
+      // Kiểm tra xem kết quả có phải là mảng hợp lệ hay không
+      if (!Array.isArray(optimizationResults)) {
+        throw new Error("Phân tích JSON không trả về mảng hợp lệ.");
+      }
+      this.setOptimizations(optimizationResults);
+
+      vscode.window.showInformationMessage(
+        "Kết quả tối ưu hóa đã được hiển thị trong Chicken Code Sidebar."
+      );
+    } catch (error) {
+      vscode.window.showErrorMessage("Lỗi khi xử lý kết quả API: " + error);
+    }
   }
 
   async scrollToCode(originalCode: string) {
@@ -103,6 +246,10 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
       vscode.window.showWarningMessage(
         "Không tìm thấy đoạn mã trong tài liệu."
       );
+      this._view?.webview.postMessage({
+        command: "removeOptimization",
+        originalCode,
+      });
       return;
     }
 
@@ -121,9 +268,18 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
     editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
   }
 
+  removeOptimization(originalCode: string) {
+    this.optimizations = this.optimizations.filter(
+      (opt) => opt.codeOriginal !== originalCode
+    );
+    this.updateWebview();
+  }
+
   clearHighlight(originalCode?: string) {
     const editor = vscode.window.activeTextEditor;
-    if (!editor) return;
+    if (!editor) {
+      return;
+    }
 
     if (originalCode) {
       const documentText = editor.document.getText();
@@ -139,14 +295,6 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
       const match = regex.exec(documentText);
 
       if (match) {
-        const startIndex = match.index;
-        const endIndex = startIndex + match[0].length;
-
-        const startPosition = editor.document.positionAt(startIndex);
-        const endPosition = editor.document.positionAt(endIndex);
-        const range = new vscode.Range(startPosition, endPosition);
-
-        // Xóa highlight của đoạn mã cụ thể
         editor.setDecorations(this.highlightDecoration, []);
       }
     } else {
@@ -254,7 +402,10 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
       <body>
         <div style="display: flex; flex-direction: column; padding: 16px; height: 100%; justify-content: space-between;">
         ${this.getHtmlBody()}
+        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
         <button id="clear-cache-button">Clear Cache</button>
+        <button id="optimize-button">Optimize</button>
+      </div>
         </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
         ${this.getScript()}
@@ -269,7 +420,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         body {
           font-family: Arial, sans-serif;
         }
-        #clear-cache-button {
+        #clear-cache-button, #optimize-button {
           margin: 4px;
           padding: 4px 8px;
           font-size: 14px;
@@ -279,11 +430,18 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           background-color: black;
         }
 
+        .loading-message {
+          font-size: 18px;
+          font-weight: bold;
+          color: #ffffff;
+          text-align: center;
+        }
+
         #optimization-list {
           margin-top: 8px;
         }
 
-        #clear-cache-button {
+        #clear-cache-button, #optimize-button {
           color: white;
         }
 
@@ -422,6 +580,10 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         document.getElementById('clear-cache-button').addEventListener('click', () => {
           vscode.postMessage({ command: 'clearCache' });
         });
+
+        document.getElementById('optimize-button').addEventListener('click', () => {
+          vscode.postMessage({ command: 'optimizeCode' });
+        });
   
         window.addEventListener('message', event => {
           const message = event.data;
@@ -436,6 +598,11 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
             }
           }
 
+          if (message.command === 'showLoading') {
+            const optimizationList = document.getElementById('optimization-list');
+            optimizationList.innerHTML = '<div class="loading-message">Loading, please wait...</div>';
+          }
+
           if (message.command === 'removeOptimization') {
             const optimizationContainer = document.querySelector(\`[data-index="\${message.index}"]\`);
             if (optimizationContainer) {
@@ -444,9 +611,10 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           }
 
           if (message.command === 'removeOptimization') {
-            const container = document.querySelector(\`[data-index="\${message.index}"]\`);
+            const container = document.querySelector(\`[data-original-code="\${message.originalCode}"]\`);
             if (container) container.remove();
           }
+
 
           if (message.command === 'updateOptimizations') {
             const optimizationList = document.getElementById('optimization-list');
@@ -473,12 +641,20 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
               title.addEventListener('click', () => {
                 const isExpanded = optimizationContainer.classList.toggle('expanded');
 
+                if (isExpanded) {
+                  // Đóng tất cả các options khác
+                  document.querySelectorAll('.optimization-container.expanded').forEach(container => {
+                    if (container !== optimizationContainer) {
+                      container.classList.remove('expanded');
+                    }
+                  });
+                }
+
                 vscode.postMessage({
-                  command: isExpanded ? 'scrollToCode' : 'clearHighlight', // Nếu expanded thì scroll, nếu không thì clear
+                  command: isExpanded ? 'scrollToCode' : 'clearHighlight',
                   originalCode: optimization.codeOriginal
                 });
               });
-
   
               const applyButton = optimizationContainer.querySelector('.apply-button');
               applyButton.addEventListener('click', () => {
@@ -522,7 +698,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
               <span>\${titleText}</span>
               <span class="arrow-icon">▶</span>
             </div>
-            <div class="optimization-content">
+            <div class="optimization-content" data-original-code="\${escapeHTML(optimization.codeOriginal)}">
               <pre class="original-code"><code>\${escapeHTML(optimization.codeOriginal)}</code></pre>
               <div class="optimized-code-container" style="position: relative; margin-top: 10px;">
                 <pre class="optimized-code"><code>\${escapeHTML(optimization.codeOptimized)}</code></pre>
@@ -535,6 +711,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
             </div>
           \`;
         }
+
       </script>
     `;
   }

@@ -146,4 +146,6 @@ ${contextParts.join("\n\n")}
   } else {
     vscode.window.showInformationMessage("❌ Không tìm thấy file config.");
   }
+
+  return additionalContext;
 };
