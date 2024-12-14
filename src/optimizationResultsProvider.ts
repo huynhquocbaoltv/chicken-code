@@ -5,6 +5,8 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
   private optimizations: any[] = [];
   private readonly SKIP_KEY = "chickenCodeSkippedOptions";
+  private readonly ADDITIONAL_RULES_KEY = "chickenCodeAdditionalRules";
+  private readonly DATA_OPTIMIZE_KEY = "chickenCodeAdditionalWebview";
   private readonly highlightDecoration: vscode.TextEditorDecorationType =
     vscode.window.createTextEditorDecorationType({
       backgroundColor: "black",
@@ -12,6 +14,153 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
       border: "0.5px solid rgba(255, 215, 0, 0.8)",
     });
   private additionalContext: string = "";
+
+  private showAdditionalRulesPanel() {
+    const panel = vscode.window.createWebviewPanel(
+      "additionalRulesPanel", // ID của view
+      "Additional Rules", // Tiêu đề của panel
+      vscode.ViewColumn.One, // Hiển thị trong cột bên phải
+      {
+        enableScripts: true, // Cho phép chạy JavaScript trong webview
+      }
+    );
+
+    const additionalRules = this.context.globalState.get<string[]>(
+      this.ADDITIONAL_RULES_KEY,
+      []
+    );
+
+    // Tạo nội dung HTML cho panel
+    panel.webview.html = this.getAdditionalRulesContent(additionalRules);
+  }
+
+  private getAdditionalRulesContent(rules: string[]): string {
+    const rulesList =
+      rules.length > 0
+        ? rules
+            .map(
+              (rule, index) => `
+        <li class="rule-item" data-index="${index}">
+          <span class="rule-name">${rule}</span>
+          <button class="delete-button" data-rule="${rule}" title="Delete Rule">Delete</button>
+        </li>
+      `
+            )
+            .join("")
+        : "<p>No additional rules available.</p>";
+
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Additional Rules</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 16px;
+          }
+          h1 {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+          }
+          ul {
+            list-style-type: none;
+            padding: 0;
+          }
+          .rule-item {
+            background-color: black;
+            margin: 4px 0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s ease;
+          }
+          .rule-item:hover {
+            background-color: #e0e0e0;
+            color: black;
+          }
+          .delete-button {
+            background: red;
+            border-radius: 4px;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            visibility: hidden;
+          }
+          .rule-item:hover .delete-button {
+            visibility: visible;
+          }
+          .no-rules {
+            color: #999;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Additional Rules</h1>
+        <ul id="rules-list">
+          ${rulesList}
+        </ul>
+        <script>
+          const vscode = acquireVsCodeApi();
+  
+          // Gắn sự kiện click cho nút delete
+          document.querySelectorAll('.delete-button').forEach(button => {
+            button.addEventListener('click', (event) => {
+              const rule = event.target.getAttribute('data-rule');
+              vscode.postMessage({ command: 'deleteRule', rule });
+            });
+          });
+          document.getElementById('rules-list').addEventListener('click', (event) => {
+            const target = event.target;
+
+            if (target.classList.contains('delete-button')) {
+              const rule = target.getAttribute('data-rule');
+              vscode.postMessage({ command: 'deleteRule', rule });
+            }
+          });
+        </script>
+      </body>
+      </html>
+    `;
+  }
+
+  public showLoadingIndicator() {
+    if (this._view) {
+      this._view.webview.postMessage({ command: "showLoading" });
+    }
+  }
+
+  public hideLoadingIndicator() {
+    if (this._view) {
+      this._view.webview.postMessage({ command: "hideLoading" });
+    }
+  }
+
+  private deleteAdditionalRule(ruleToDelete: string) {
+    const currentRules = this.context.globalState.get<string[]>(
+      this.ADDITIONAL_RULES_KEY,
+      []
+    );
+    vscode.window.showInformationMessage(`Deleting rule '${ruleToDelete}'...`);
+    const updatedRules = currentRules.filter((rule) => rule !== ruleToDelete);
+
+    this.context.globalState
+      .update(this.ADDITIONAL_RULES_KEY, updatedRules)
+      .then(() => {
+        vscode.window.showInformationMessage(
+          `Rule '${ruleToDelete}' has been deleted.`
+        );
+        this.showAdditionalRulesPanel(); // Tải lại webview panel với danh sách mới
+      });
+  }
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.loadAdditionalContext();
@@ -37,7 +186,18 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
 
     webviewView.onDidChangeVisibility(() => {
       if (!webviewView.visible) {
+        const currentData = this.optimizations;
+        this.context.workspaceState.update(this.DATA_OPTIMIZE_KEY, currentData);
         this.clearHighlight();
+      } else {
+        const savedData = this.context.workspaceState.get<any[]>(
+          this.DATA_OPTIMIZE_KEY,
+          []
+        );
+        if (savedData && savedData.length > 0) {
+          this.optimizations = savedData; // Phục hồi dữ liệu tối ưu hóa
+          this.updateWebview(); // Cập nhật webview với dữ liệu đã phục hồi
+        }
       }
     });
 
@@ -83,6 +243,10 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           vscode.window.showInformationMessage("Cache đã được xóa thành công.");
           this.setOptimizations(this.optimizations);
           break;
+
+        case "viewAdditionalRule":
+          this.showAdditionalRulesPanel();
+          break;
         case "scrollToCode":
           this.scrollToCode(message.originalCode);
           break;
@@ -91,6 +255,27 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           break;
         case "clearHighlight":
           this.clearHighlight(message.originalCode);
+          break;
+        case "skipRule":
+          const currentSkippedRules =
+            this.context.globalState.get<string[]>(this.ADDITIONAL_RULES_KEY) ||
+            [];
+          if (!currentSkippedRules.includes(message.rule)) {
+            currentSkippedRules.push(message.rule);
+            this.context.globalState.update(
+              this.ADDITIONAL_RULES_KEY,
+              currentSkippedRules
+            );
+            vscode.window.showInformationMessage(
+              `Rule '${message.rule}' has been skipped.`
+            );
+          }
+          break;
+        case "deleteRule":
+          vscode.window.showInformationMessage(
+            `Deleting rule '${message.rule}'...sdsđ`
+          );
+          this.deleteAdditionalRule(message.rule);
           break;
       }
     });
@@ -402,8 +587,13 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
       <body>
         <div style="display: flex; flex-direction: column; padding: 16px; height: 100%; justify-content: space-between;">
         ${this.getHtmlBody()}
+        <div class="message-container">
+          <div class="message-title">Chicken Code hello!</div>
+          <div class="message-subtitle">Create by Huynh Quoc Bao LTV</div>
+        </div>
         <div style="display: flex; justify-content: space-between; margin-top: 4px;">
         <button id="clear-cache-button">Clear Cache</button>
+        <button id="view-additional-rule-button">View Additional Rule</button>
         <button id="optimize-button">Optimize</button>
       </div>
         </div>
@@ -420,7 +610,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         body {
           font-family: Arial, sans-serif;
         }
-        #clear-cache-button, #optimize-button {
+        #clear-cache-button, #optimize-button, #view-additional-rule-button {
           margin: 4px;
           padding: 4px 8px;
           font-size: 14px;
@@ -441,7 +631,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           margin-top: 8px;
         }
 
-        #clear-cache-button, #optimize-button {
+        #clear-cache-button, #optimize-button, #view-additional-rule-button {
           color: white;
         }
 
@@ -468,14 +658,14 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
         }
   
         .optimization-title {
-          background-color: #2d2d2d;
+          background-color: black;
           color: #ffffff;
           padding: 4px 8px;
           cursor: pointer;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          font-size: 16px;
+          font-size: 15px;
         }
   
         .optimization-title:hover {
@@ -581,6 +771,10 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           vscode.postMessage({ command: 'clearCache' });
         });
 
+        document.getElementById('view-additional-rule-button').addEventListener('click', () => {
+          vscode.postMessage({ command: 'viewAdditionalRule' });
+        });
+
         document.getElementById('optimize-button').addEventListener('click', () => {
           vscode.postMessage({ command: 'optimizeCode' });
         });
@@ -621,7 +815,6 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
             optimizationList.innerHTML = '';
             const title = document.getElementById('title');
             if (message.optimizations.length === 0) {
-              optimizationList.innerHTML = getMessageContainer();
               title.textContent = 'No optimizations available';
               return;
             }
@@ -673,6 +866,11 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
                   index
                 });
               });
+
+              const skipRuleButton = optimizationContainer.querySelector('.skip-rule-button');
+              skipRuleButton.addEventListener('click', () => {
+                vscode.postMessage({ command: 'skipRule', rule: optimization.codeDescription });
+              });
   
               optimizationList.appendChild(optimizationContainer);
             });
@@ -682,15 +880,6 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
             });
           }
         });
-  
-        function getMessageContainer() {
-          return \`
-            <div class="message-container">
-              <div class="message-title">Chicken Code hello!</div>
-              <div class="message-subtitle">Create by Huynh Quoc Bao LTV</div>
-            </div>
-          \`;
-        }
   
         function getOptimizationContent(titleText, optimization, index) {
           return \`
@@ -707,7 +896,10 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
                   <button class="skip-button">Skip</button>
                 </div>
               </div>
-              <p>\${optimization.codeDescription}</p>
+              <div style="position: relative; margin-top: 10px;">
+                <p>\${optimization.codeDescription}</p>
+                <button class="skip-rule-button">Skip This Rule</button>
+              </div>
             </div>
           \`;
         }

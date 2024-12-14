@@ -11,8 +11,17 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
+  let saveTimeout: NodeJS.Timeout;
+  const debounceTime = 1000; // Thời gian chờ giữa các lần lưu file
+
   let disposable = vscode.workspace.onDidSaveTextDocument(async () => {
-    optimizationProvider.startOptimization();
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => {
+      optimizationProvider.showLoadingIndicator();
+      optimizationProvider.startOptimization().finally(() => {
+        optimizationProvider.hideLoadingIndicator();
+      });
+    }, debounceTime);
   });
 
   context.subscriptions.push(disposable);
