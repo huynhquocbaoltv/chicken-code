@@ -17,18 +17,14 @@ const CONFIG_FILES = [
   "tsconfig.json",
 ];
 
-/**
- * Lấy file hiện đang mở trong VS Code
- */
 const getCurrentFilePath = (): string | undefined => {
   const activeEditor = vscode.window.activeTextEditor;
-  if (!activeEditor) return undefined;
+  if (!activeEditor) {
+    return undefined;
+  }
   return activeEditor.document.fileName;
 };
 
-/**
- * Tìm file config ảnh hưởng đến file hiện tại
- */
 const findConfigFileForCurrentFile = (
   fileName: string
 ): Record<string, string | undefined> => {
@@ -46,52 +42,39 @@ const findConfigFileForCurrentFile = (
     }
 
     const parentDir = path.dirname(currentDir);
-    if (currentDir === parentDir) break; // Đã tới thư mục root
+    if (currentDir === parentDir) {
+      break;
+    }
     currentDir = parentDir;
   }
 
   return appliedConfigs;
 };
 
-/**
- * Đọc nội dung file config và trả về nội dung file
- */
 const readConfigFileContent = async (
   filePath: string
 ): Promise<string | null> => {
   try {
     const content = await fs.promises.readFile(filePath, "utf-8");
-    console.log(`📄 Nội dung của file ${filePath}:\n${content}`);
     return content;
   } catch (error) {
-    console.error(`❌ Không thể đọc file ${filePath}:`, error);
     return null;
   }
 };
 
-/**
- * Hàm chính để kiểm tra các file config đang được áp dụng
- */
 export const checkAppliedConfigFiles = async () => {
   const currentFile = getCurrentFilePath();
   if (!currentFile) {
-    vscode.window.showWarningMessage("⚠️ Không có tệp nào đang mở.");
+    vscode.window.showInformationMessage("⚠️ No file is currently open.");
     return;
   }
-
-  console.log(`📘 File hiện tại: ${currentFile}`);
 
   const appliedConfigs = findConfigFileForCurrentFile(currentFile);
   if (Object.keys(appliedConfigs).length === 0) {
-    vscode.window.showInformationMessage(
-      "❌ Không tìm thấy file config áp dụng."
-    );
+    vscode.window.showInformationMessage("❌ No config file found.");
     return;
   }
 
-  console.log("📄 Các file config đã tìm thấy:", appliedConfigs);
-
-  // Lấy nội dung của các file config (nếu có)
   const eslintConfig = appliedConfigs[".eslintrc"]
     ? await readConfigFileContent(appliedConfigs[".eslintrc"])
     : null;
@@ -104,7 +87,6 @@ export const checkAppliedConfigFiles = async () => {
     ? await readConfigFileContent(appliedConfigs["tsconfig.json"])
     : null;
 
-  // Tạo context để hiển thị
   const contextParts: string[] = [];
 
   if (eslintConfig) {
@@ -134,17 +116,23 @@ ${tsConfig}
     `);
   }
 
-  // Nối tất cả các phần context thành 1 chuỗi
   const additionalContext = `
-### 📋 Additional Context (Configuration Files)
+### **Configuration Guidelines**
+
+The following configurations must be respected when optimizing the code:
+
 ${contextParts.join("\n\n")}
+
+----------
+
   `;
 
-  // Chỉ log và hiển thị nếu có context
   if (contextParts.length > 0) {
-    vscode.window.showInformationMessage("✅ Đã lấy thông tin file config.");
+    vscode.window.showInformationMessage(
+      "✅ Have got the information of config files."
+    );
   } else {
-    vscode.window.showInformationMessage("❌ Không tìm thấy file config.");
+    vscode.window.showInformationMessage("❌ No config file found.");
   }
 
   return additionalContext;
