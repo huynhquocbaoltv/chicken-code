@@ -2,7 +2,7 @@
   "name": "chicken-code",
   "displayName": "chicken-code",
   "description": "optimize your code",
-  "version": "0.0.4",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.93.0"
   },

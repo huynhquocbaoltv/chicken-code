@@ -1,122 +1,151 @@
-# Chicken Code Optimizer 🐔
-Automatic, Simple, Fast, and Accurate Code Optimization
+# Chicken Code Extension for Visual Studio Code
 
-📘 Introduction
-Chicken Code Optimizer is a powerful extension for Visual Studio Code (VS Code) that helps developers automatically optimize source code for popular programming languages like Vue.js, TypeScript, and JavaScript. This tool uses AI (Google Generative Language API) to analyze, detect, and suggest code improvements directly in the Chicken Code Sidebar of VS Code.
+## 🚀 **Introduction**
+Chicken Code is an extension for Visual Studio Code that helps you automatically and efficiently optimize your source code. By leveraging AI from Google Generative Language, Chicken Code analyzes your source code, provides optimization suggestions, and allows you to apply them instantly.
 
-With Chicken Code Optimizer, you can save development time, ensure code quality, follow industry best practices, and maintain ESLint, Prettier, and SonarQube standards.
+---
 
-🚀 Key Features
-🔥 Automatic Code Optimization
-Automatic analysis and optimization every time you save a file.
-Detects syntax and logic improvements while preserving the original structure of the code.
-Supports popular languages: Vue.js, TypeScript, and JavaScript.
-📂 Config File Management
-Automatically identifies and displays the configuration files affecting the current file, including:
-ESLint: .eslintrc, .eslintrc.json, .eslintrc.js, .eslintrc.cjs
-Prettier: .prettierrc, .prettierrc.json, .prettierrc.js, .prettierrc.cjs
-TypeScript: tsconfig.json
-⚡ User-Friendly Interface
-Displays optimizations directly in the Chicken Code Sidebar.
-Each optimization includes:
-Apply: Instantly apply the optimization.
-Skip: Skip the optimization and save it to the cache.
-View Cache: View the list of skipped optimizations.
-Clear Cache: Clear the cache to re-enable all optimizations.
-🔐 Skip and Cache Management
-Skip suggestions: If you don't want to apply a suggestion, click Skip to store it in the cache.
-View and Clear Cache: View the list of skipped optimizations and clear the cache if needed.
-📦 Installation
-Open Visual Studio Code.
-Go to Extensions (Ctrl + Shift + X).
-Search for Chicken Code Optimizer and click Install.
-The extension will be installed and ready to use.
-✨ How to Use
-1️⃣ Automatic Code Optimization
-Open a Vue.js, TypeScript, or JavaScript file.
-Write your code and press Ctrl + S (Save file).
-The Chicken Code Sidebar will display a list of possible optimizations.
-For each optimization, you have two options:
-Apply: Apply the optimization directly to your file.
-Skip: Skip the optimization, and it will not be displayed again unless you clear the cache.
-2️⃣ View and Manage Configuration Files
-When you open a file (.vue, .ts, or .js), the extension will automatically search for and display the contents of the following configuration files:
-ESLint Config: .eslintrc, .eslintrc.json, .eslintrc.js, .eslintrc.cjs
-Prettier Config: .prettierrc, .prettierrc.json, .prettierrc.js, .prettierrc.cjs
-TypeScript Config: tsconfig.json
-The configuration file content will be displayed directly in the Chicken Code Sidebar.
-3️⃣ Cache Management
-Skip an optimization: Click the Skip button to avoid the optimization.
-View Cache: Click View Cache to see which optimizations have been skipped.
-Clear Cache: Click Clear Cache to clear the cache and show all available optimizations again.
-💡 Examples
-1️⃣ Code Optimization Example
-Before:
+## 🧩 **Key Features**
 
-javascript
-Copy code
-let items = [];
-items.push("a");
-items.push("b");
-items.push("c");
-Optimization Suggestion:
+- **Code Analysis and Optimization**: Automatically detects areas for improvement and provides suggestions.
+- **User-friendly Interface**: Displays the list of optimizations in the Webview Sidebar.
+- **Configuration File Integration**: Reads files like `.eslintrc`, `.prettierrc`, and `tsconfig.json` to follow project rules.
+- **Manage Additional Rules**: Easily add, delete, and manage optimization rules.
+- **Save and Delete API Key**: Allows users to enter and securely store the API Key.
+- **View Optimization History**: Displays skipped optimizations and allows users to review them.
 
-javascript
-Copy code
-let items = ["a", "b", "c"];
-2️⃣ Config File Detection
-Current file: src/components/HelloWorld.vue
+---
 
-Detected Config Files:
+## 📦 **Installation**
 
-diff
-Copy code
-- .eslintrc.json (in the root directory)
-- .prettierrc (in the project directory)
-- tsconfig.json (in the root directory)
-🔧 File Structure
-go
-Copy code
-📦 Chicken Code Optimizer
-├─ 📁 src
-│  ├─ 📄 extension.ts             // Main file that activates the extension
-│  ├─ 📄 optimizationResultsProvider.ts // Manages the optimization view
-│  ├─ 📄 fileConfig.ts            // Manages config file discovery
-│  ├─ 📄 utils.ts                 // Utility functions
-├─ 📄 package.json                // Extension manifest
-├─ 📄 README.md                   // This readme file
-📜 Supported Configuration Files
-Type	File Name
-ESLint	.eslintrc, .eslintrc.json, .eslintrc.js, .eslintrc.cjs
-Prettier	.prettierrc, .prettierrc.json, .prettierrc.js, .prettierrc.cjs
-TypeScript	tsconfig.json
-🔥 Technologies Used
-TypeScript: The primary language used to develop the extension.
-Visual Studio Code API: Used to manage sidebars, file content, and event listeners.
-Google Generative AI API: Used to analyze source code and suggest optimizations.
-File System (FS): Used to read config files and display them in the sidebar.
-🛠️ Configuration
-No additional configuration is required! Just install the extension and enjoy automated code optimization.
+1. Open Visual Studio Code.
+2. Open the **Extensions** tab (Ctrl + Shift + X).
+3. Search for **Chicken Code**.
+4. Click the **Install** button to install the extension.
+5. After installation, you will see the **Chicken Code** icon in the Activity Bar.
 
-🖥️ User Interface
-Optimization List: Displays possible optimizations.
-Apply/Skip Buttons: Users can Apply (make the change) or Skip (ignore) optimizations.
-Cache Management: View and clear the cache of skipped optimizations.
-Config File Display: Displays the contents of ESLint, Prettier, and TSConfig files directly in the sidebar.
-🚀 How to Contribute
-Fork the repository and create a new branch (git checkout -b feature/your-feature-name).
-Make your changes and write clear commit messages.
-Submit a pull request with a description of the changes.
-Wait for review and feedback.
-🧑‍💻 Author
-Huynh Quoc Bao (LTV)
+---
 
-"Chicken Code – Let the chicken help you optimize your code."
+## 📚 **Usage Guide**
 
-📞 Support
-If you encounter any issues, please contact us at email.
+### 1️⃣ **Enter API Key**
+- On first use, you will be prompted to enter an API Key.
+- The API Key can be obtained from [Google AI Studio](https://aistudio.google.com/apikey).
+- Enter the API Key and click **Save**.
 
-📃 License
-Chicken Code Optimizer is licensed under the MIT License. See the LICENSE file for more details.
+### 2️⃣ **Optimize Code**
+- Open the file you want to optimize.
+- Click the **Optimize** button in the Chicken Code Sidebar.
+- Chicken Code will analyze and display optimization suggestions.
 
-# chicken-code
+### 3️⃣ **Manage Optimizations**
+- **Apply Optimization**: Click the **Apply** button to apply the optimization to your source code.
+- **Skip Optimization**: Click the **Skip** button to skip the optimization.
+- **Add Additional Rules**: Skip specific rules for future optimizations.
+
+### 4️⃣ **View and Manage Additional Rules**
+- Click the **View Additional Rule** button to view the list of skipped rules.
+- Delete additional rules by clicking the **Delete** button next to the rule.
+
+### 5️⃣ **Clear Cache and API Key**
+- Click the **Clear Cache** button to clear all skipped optimizations.
+- Click the **Reset API Key** button to delete the API Key from the extension's storage.
+
+---
+
+## ⚙️ **Configuration and Setup**
+
+Chicken Code automatically detects and uses the following configuration files from the project's root directory:
+- **ESLint**: `.eslintrc`, `.eslintrc.json`, `.eslintrc.js`
+- **Prettier**: `.prettierrc`, `.prettierrc.json`, `.prettierrc.js`
+- **TypeScript**: `tsconfig.json`
+
+If these files exist, Chicken Code will adjust its optimizations to comply with the rules and guidelines specified in these files.
+
+---
+
+## 📖 **System Architecture**
+
+### **File Structure**
+- **extension.ts**: The main entry point for the extension and registers necessary providers.
+- **optimizationResultsProvider.ts**: The main class that manages the Webview and displays optimization suggestions.
+- **checkApiKey.ts**: Manages the API Key, including entry and deletion.
+- **constants.ts**: Contains constants and prompt templates for different programming languages.
+- **fileConfig.ts**: Searches for and reads configuration files from the project.
+- **handleView.ts**: Generates HTML, CSS, and JavaScript content for Chicken Code's Webview.
+- **service.ts**: Sends requests to the Google Generative Language API to retrieve optimizations.
+
+---
+
+## 🛠️ **NPM Scripts**
+
+| Script         | Description                           |
+|----------------|---------------------------------------|
+| `yarn compile` | Compiles TypeScript source files      |
+| `yarn watch`   | Watches for changes and auto-compiles |
+| `yarn package` | Creates a package for the extension   |
+| `yarn lint`    | Runs ESLint checks                    |
+| `yarn test`    | Runs all tests                        |
+
+---
+
+## 📄 **API Usage**
+
+Chicken Code uses the **Google Generative Language API** to create source code optimizations.
+
+- **Endpoint**: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent`
+- **Method**: POST
+- **Request Body**:
+  ```json
+  {
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": "<Your source code>"
+          }
+        ]
+      }
+    ]
+  }
+  ```
+- **Response**: JSON containing the list of optimizations.
+
+---
+
+## 📋 **System Requirements**
+
+- **Visual Studio Code**: Version `^1.93.0` or later.
+- **Node.js**: Version `>=14.x`.
+
+---
+
+## 🚨 **Important Notes**
+
+- Your API Key will be stored in VS Code's `globalState`.
+- Chicken Code may prompt you to re-enter the API Key if it is invalid.
+- Ensure that your configuration files (`.eslintrc`, `.prettierrc`, `tsconfig.json`, etc.) are correctly defined to maximize Chicken Code's capabilities.
+
+---
+
+## 🤝 **Contributions**
+
+We welcome contributions from the community! If you find a bug or have a feature suggestion, please open an issue or submit a pull request on GitHub.
+
+- **GitHub Repository**: [Chicken Code on GitHub](https://github.com/huynhquocbaoltv/chicken-code)
+
+---
+
+## 📞 **Support**
+
+If you have any questions, feel free to reach out via email: **bao.hq@ltv.dev**.
+
+---
+
+## 📜 **License**
+
+Chicken Code is licensed under the MIT License. See the [LICENSE](./LICENSE) file for more details.
+
+---
+
+Thank you for using Chicken Code! 🐔
