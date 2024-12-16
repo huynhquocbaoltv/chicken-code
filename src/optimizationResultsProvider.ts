@@ -123,13 +123,14 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
           break;
 
         case "applyCode":
-          await this.applyOptimization(
+          this.applyOptimization(
             message.originalCode,
             message.optimizedCode
-          );
-          this._view?.webview.postMessage({
-            command: "removeOptimization",
-            index: message.index,
+          ).then(() => {
+            this._view?.webview.postMessage({
+              command: "removeOptimization",
+              index: message.index,
+            });
           });
           break;
 
@@ -237,7 +238,7 @@ export class OptimizationResultsProvider implements vscode.WebviewViewProvider {
       },
       async () => {
         this.showLoadingIndicator();
-        this.loadAdditionalContext();
+        await this.loadAdditionalContext();
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
           vscode.window.showErrorMessage(
@@ -536,6 +537,7 @@ If the code does not require optimization, explicitly state that no optimization
           );
         } else {
           vscode.window.showErrorMessage("Cannot apply optimization.");
+          throw new Error("Cannot apply optimization.");
         }
       });
   }

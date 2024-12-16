@@ -15,6 +15,10 @@ const CONFIG_FILES = [
   ".prettierrc.cjs",
   // TSConfig file
   "tsconfig.json",
+  // EditorConfig file
+  ".editorconfig",
+  // Best Practices
+  "best-practices.md",
 ];
 
 const getCurrentFilePath = (): string | undefined => {
@@ -75,6 +79,10 @@ export const checkAppliedConfigFiles = async () => {
     return;
   }
 
+  const bestPractices = appliedConfigs["best-practices.md"]
+    ? await readConfigFileContent(appliedConfigs["best-practices.md"])
+    : null;
+
   const eslintConfig = appliedConfigs[".eslintrc"]
     ? await readConfigFileContent(appliedConfigs[".eslintrc"])
     : null;
@@ -87,12 +95,26 @@ export const checkAppliedConfigFiles = async () => {
     ? await readConfigFileContent(appliedConfigs["tsconfig.json"])
     : null;
 
+  const editorConfig = appliedConfigs[".editorconfig"]
+    ? await readConfigFileContent(appliedConfigs[".editorconfig"])
+    : null;
+
   const contextParts: string[] = [];
+
+  if (bestPractices) {
+    contextParts.push(`
+**Best Practices** You must follow the best practices mentioned in the following file:
+
+\`\`\`md
+${bestPractices}
+\`\`\`
+`);
+  }
 
   if (eslintConfig) {
     contextParts.push(`
 **ESLint Config**:
-\`\`\`json
+\`\`\`
 ${eslintConfig}
 \`\`\`
     `);
@@ -101,7 +123,7 @@ ${eslintConfig}
   if (prettierConfig) {
     contextParts.push(`
 **Prettier Config**:
-\`\`\`json
+\`\`\`
 ${prettierConfig}
 \`\`\`
     `);
@@ -110,8 +132,17 @@ ${prettierConfig}
   if (tsConfig) {
     contextParts.push(`
 **TSConfig**:
-\`\`\`json
+\`\`\`
 ${tsConfig}
+\`\`\`
+    `);
+  }
+
+  if (editorConfig) {
+    contextParts.push(`
+**EditorConfig**:
+\`\`\`
+${editorConfig}
 \`\`\`
     `);
   }
@@ -129,7 +160,7 @@ ${contextParts.join("\n\n")}
 
   if (contextParts.length > 0) {
     vscode.window.showInformationMessage(
-      "✅ Have got the information of config files."
+      "✅ Have got the information of config files." + additionalContext
     );
   } else {
     vscode.window.showInformationMessage("❌ No config file found.");
