@@ -160,7 +160,7 @@ ${contextParts.join("\n\n")}
 
   if (contextParts.length > 0) {
     vscode.window.showInformationMessage(
-      "✅ Have got the information of config files." + additionalContext
+      "✅ Have got the information of config files."
     );
   } else {
     vscode.window.showInformationMessage("❌ No config file found.");

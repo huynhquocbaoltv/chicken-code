@@ -379,11 +379,11 @@ If the code does not require optimization, explicitly state that no optimization
     }
   }
 
-  async scrollToCode(originalCode: string) {
+  getRangeCodeInFile(originalCode: string) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       vscode.window.showErrorMessage("No file is open to scroll to the code.");
-      return;
+      return null;
     }
 
     const documentText = editor.document.getText();
@@ -401,20 +401,33 @@ If the code does not require optimization, explicitly state that no optimization
 
     if (!match) {
       vscode.window.showWarningMessage("Code snippet not found in document.");
-      this.clearHighlight();
-      return;
+      return null;
     }
-
     const startIndex = match.index;
     const endIndex = startIndex + match[0].length;
 
     const startPosition = editor.document.positionAt(startIndex);
     const endPosition = editor.document.positionAt(endIndex);
     const range = new vscode.Range(startPosition, endPosition);
+    return range;
+  }
+
+  scrollToCode(originalCode: string) {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showErrorMessage("No file is open to scroll to the code.");
+      return;
+    }
+    const range = this.getRangeCodeInFile(originalCode);
+    if (!range) {
+      vscode.window.showWarningMessage("Code snippet not found in document.");
+      this.clearHighlight();
+      return;
+    }
 
     editor.setDecorations(this.highlightDecoration, [range]);
 
-    editor.selection = new vscode.Selection(startPosition, startPosition);
+    editor.selection = new vscode.Selection(range.start, range.start);
     editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
   }
 
@@ -472,26 +485,31 @@ If the code does not require optimization, explicitly state that no optimization
     return hash.toString();
   }
 
-  setOptimizations(optimizations: any[]): void {
-    if (optimizations.length > 0) {
-      vscode.commands
-        .executeCommand("workbench.view.extension.chickenCodeOptimizer")
-        .then(() => {
-          const skippedOptions =
-            this.context.globalState.get<string[]>(SKIP_KEY) || [];
-          this.optimizations = optimizations.filter(
+  setOptimizations(optimizations: any[] = []): void {
+    vscode.commands
+      .executeCommand("workbench.view.extension.chickenCodeOptimizer")
+      .then(() => {
+        const skippedOptions =
+          this.context.globalState.get<string[]>(SKIP_KEY) || [];
+        this.optimizations = optimizations
+          .filter(
             (opt) => !skippedOptions.includes(this.hashCode(opt.codeOriginal))
-          );
-          this.updateWebview();
-        });
-    } else {
-      this.optimizations = [];
-      this.updateWebview();
-    }
+          )
+          .map((opt) => {
+            return {
+              ...opt,
+              canApply: !!this.getRangeCodeInFile(opt.codeOriginal),
+            };
+          });
+        this.updateWebview();
+      });
   }
 
   updateWebview() {
     if (this._view) {
+      vscode.window.showInformationMessage(
+        `Optimizations: ${this.optimizations}`
+      );
       this._view.webview.postMessage({
         command: "updateOptimizations",
         optimizations: this.optimizations,
@@ -509,23 +527,11 @@ If the code does not require optimization, explicitly state that no optimization
       );
       return;
     }
-
-    const documentText = editor.document.getText();
-    const startIndex = documentText.indexOf(originalCode);
-
-    if (startIndex === -1) {
-      vscode.window.showWarningMessage(
-        "Original code snippet not found in document."
-      );
+    const range = this.getRangeCodeInFile(originalCode);
+    if (!range) {
+      vscode.window.showWarningMessage("Code snippet not found in document.");
       return;
     }
-
-    const startPosition = editor.document.positionAt(startIndex);
-    const endPosition = editor.document.positionAt(
-      startIndex + originalCode.length
-    );
-    const range = new vscode.Range(startPosition, endPosition);
-
     editor
       .edit((editBuilder) => {
         editBuilder.replace(range, optimizedCode);
@@ -540,5 +546,6 @@ If the code does not require optimization, explicitly state that no optimization
           throw new Error("Cannot apply optimization.");
         }
       });
+    this.clearHighlight();
   }
 }

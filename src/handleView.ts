@@ -501,6 +501,7 @@ export const getScript = () => {
         });
   
         function getOptimizationContent(titleText, optimization, index) {
+          const applyButton = optimization.canApply ? '<button class="apply-button">Apply Code</button>' : '<button class="apply-button" style="display: none;"></button>';
           return \`
             <div class="optimization-title">
               <span>\${titleText}</span>
@@ -511,7 +512,7 @@ export const getScript = () => {
               <div class="optimized-code-container" style="position: relative; margin-top: 10px;">
                 <pre class="optimized-code"><code>\${escapeHTML(optimization.codeOptimized)}</code></pre>
                 <div class="button-group">
-                  <button class="apply-button">Apply Code</button>
+                  \${applyButton}
                   <button class="skip-button">Skip</button>
                 </div>
               </div>

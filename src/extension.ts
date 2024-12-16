@@ -19,7 +19,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   let saveTimeout: NodeJS.Timeout;
-  const debounceTime = 1000;
+  const debounceTime = 1500;
 
   let disposable = vscode.workspace.onDidSaveTextDocument(async () => {
     const onSave = context.globalState.get<boolean>(ON_SAVE_KEY);
